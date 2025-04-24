@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import nacl from "tweetnacl";
+import bs58 from "bs58";
 
 type Wallet = 'phantom' | 'solflare'
 
@@ -10,9 +12,25 @@ const WALLET_DEEPLINKS: Record<Wallet, (redirect: string) => string> = {
   solflare: (redirect) =>
     `solflare://wallet/connect?redirect_url=${encodeURIComponent(`${redirect}/wallet/callback`)}`,
 }
-
+const buildUrl = (path: string, params: URLSearchParams) =>
+    `https://phantom.app/ul/v1/${path}?${params.toString()}`;
+  
 export function MobileWalletConnectButton() {
   const [publicKey, setPublicKey] = useState<string | null>(null)
+
+  const [dappKeyPair] = useState(nacl.box.keyPair());
+
+  const connect = async () => {
+    const params = new URLSearchParams({
+      dapp_encryption_public_key: bs58.encode(dappKeyPair.publicKey),
+      cluster: "mainnet-beta",
+      app_url: "https://phantom.app",
+      redirect_link: onConnectRedirectLink,
+    });
+
+    const url = buildUrl("connect", params);
+    Linking.openURL(url);
+  };
 
   // ✅ Bắt public key từ URL sau khi redirect về
   useEffect(() => {
